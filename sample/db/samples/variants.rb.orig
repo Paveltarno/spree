@@ -29,8 +29,13 @@ masters = {
     :sku => "ROR-00011",
     :cost_price => 17
   },
+<<<<<<< HEAD
+  ror_bag => {
+    :sku => "ROR-00012",
+=======
   ror_milk_yot => {
     :sku => "ROR-10012",
+>>>>>>> 56433fd... Refactoring the all the seed data
     :cost_price => 21
   },
   ror_bread => {

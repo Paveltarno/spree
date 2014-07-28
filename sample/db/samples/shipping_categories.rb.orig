@@ -1,0 +1,5 @@
+<<<<<<< HEAD
+Spree::ShippingCategory.find_or_create_by!(:name => "Default")
+=======
+Spree::ShippingCategory.create!(:name => "ברירת מחדל")
+>>>>>>> 56433fd... Refactoring the all the seed data
