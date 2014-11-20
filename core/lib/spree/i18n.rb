@@ -10,7 +10,6 @@ module Spree
     # Add spree namespace and delegate to Rails TranslationHelper for some nice
     # extra functionality. e.g return reasonable strings for missing translations
     def translate(*args)
-      Rails.logger.debug { "Translating: #{args}" }
       @virtual_path = virtual_path
 
       options = args.extract_options!
