@@ -1,9 +1,14 @@
 Spree::Sample.load_sample("variants")
 
-location = Spree::StockLocation.first_or_create! name: 'ברירת מחדל'
+location = Spree::StockLocation.first_or_create! name: 'סניף ראשי'
 location.active = true
-location.country =  Spree::Country.where(iso: 'IL').first
+location.country = Spree::Country.where(iso: 'IL').first
 location.save!
+
+location2 = Spree::StockLocation.new(name: 'סניף משני')
+location2.active = true
+location2.country = Spree::Country.where(iso: 'IL').first
+location2.save!
 
 Spree::Variant.all.each do |variant|
   variant.stock_items.each do |stock_item|

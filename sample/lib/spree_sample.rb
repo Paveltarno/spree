@@ -26,6 +26,15 @@ module SpreeSample
       Spree::Sample.load_sample("orders")
       Spree::Sample.load_sample("adjustments")
       Spree::Sample.load_sample("payments")
+      Spree::Sample.load_sample("time_slots") if class_exists?("Spree::ShipmentTimeSlot")
     end
+
+    def self.class_exists?(class_name)
+      klass = Module.const_get(class_name)
+      return klass.is_a?(Class)
+    rescue NameError
+      return false
+    end
+
   end
 end
