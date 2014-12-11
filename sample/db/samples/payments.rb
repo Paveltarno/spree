@@ -12,7 +12,7 @@ end
 # reference it as such. Make it explicit here that this table has been renamed.
 Spree::CreditCard.table_name = 'spree_credit_cards'
 
-creditcard = Spree::CreditCard.create(:cc_type => 'visa', :month => 12, :year => 2014, :last_digits => '1111',
+creditcard = Spree::CreditCard.create(:cc_type => 'visa', :month => 12, :year => 2019, :last_digits => '1111',
                                       :name => 'Sean Schofield', :gateway_customer_profile_id => '1234567', :gateway_payment_profile_id => '1234567',
                                       :personal_id => "123456789")
 
