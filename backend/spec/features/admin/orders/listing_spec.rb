@@ -1,13 +1,13 @@
 require 'spec_helper'
 
-describe "Orders Listing" do
+describe "Orders Listing", :type => :feature do
   stub_authorization!
 
   let!(:promotion) { create(:promotion_with_item_adjustment) }
 
   before(:each) do
-    @order1 = create(:order, :created_at => 1.day.from_now, :completed_at => 1.day.from_now, :number => "R100")
-    @order2 = create(:order, :created_at => 1.day.ago, :completed_at => 1.day.ago, :number => "R200")
+    @order1 = create(:order, created_at: 1.day.from_now, completed_at: 1.day.from_now, considered_risky: true, number: "R100")
+    @order2 = create(:order, created_at: 1.day.ago, completed_at: 1.day.ago, number: "R200")
     visit spree.admin_path
   end
 
@@ -18,31 +18,33 @@ describe "Orders Listing" do
 
     it "should list existing orders" do
       within_row(1) do
-        column_text(2).should == "R100"
-        column_text(3).should == "cart"
+        expect(column_text(2)).to eq "R100"
+        expect(find("td:nth-child(3)")).to have_css '.considered_risky'
+        expect(column_text(4)).to eq "cart"
       end
 
       within_row(2) do
-        column_text(2).should == "R200"
+        expect(column_text(2)).to eq "R200"
+        expect(find("td:nth-child(3)")).to have_css '.considered_safe'
       end
     end
 
     it "should be able to sort the orders listing" do
       # default is completed_at desc
-      within_row(1) { page.should have_content("R100") }
-      within_row(2) { page.should have_content("R200") }
+      within_row(1) { expect(page).to have_content("R100") }
+      within_row(2) { expect(page).to have_content("R200") }
 
       click_link "Completed At"
 
       # Completed at desc
-      within_row(1) { page.should have_content("R200") }
-      within_row(2) { page.should have_content("R100") }
+      within_row(1) { expect(page).to have_content("R200") }
+      within_row(2) { expect(page).to have_content("R100") }
 
       within('table#listing_orders thead') { click_link "Number" }
 
       # number asc
-      within_row(1) { page.should have_content("R100") }
-      within_row(2) { page.should have_content("R200") }
+      within_row(1) { expect(page).to have_content("R100") }
+      within_row(2) { expect(page).to have_content("R200") }
     end
   end
 
@@ -55,11 +57,26 @@ describe "Orders Listing" do
       fill_in "q_number_cont", :with => "R200"
       click_icon :search
       within_row(1) do
-        page.should have_content("R200")
+        expect(page).to have_content("R200")
       end
 
       # Ensure that the other order doesn't show up
-      within("table#listing_orders") { page.should_not have_content("R100") }
+      within("table#listing_orders") { expect(page).not_to have_content("R100") }
+    end
+
+    it "should be able to filter risky orders" do
+      # Check risky and filter
+      check "q_considered_risky_eq"
+      click_button "Filter Results"
+
+      # Insure checkbox still checked
+      expect(find("#q_considered_risky_eq")).to be_checked
+      # Insure we have the risky order, R100
+      within_row(1) do
+        expect(page).to have_content("R100")
+      end
+      # Insure the non risky order is not present
+      expect(page).not_to have_content("R200")
     end
 
     context "when pagination is really short" do
@@ -80,34 +97,34 @@ describe "Orders Listing" do
         within(".pagination") do
           click_link "2"
         end
-        page.should have_content("incomplete@example.com")
-        find("#q_completed_at_not_null").should_not be_checked
+        expect(page).to have_content("incomplete@example.com")
+        expect(find("#q_completed_at_not_null")).not_to be_checked
       end
     end
 
     it "should be able to search orders using only completed at input" do
       fill_in "q_created_at_gt", :with => Date.current
       click_icon :search
-      within_row(1) { page.should have_content("R100") }
+      within_row(1) { expect(page).to have_content("R100") }
 
       # Ensure that the other order doesn't show up
-      within("table#listing_orders") { page.should_not have_content("R200") }
+      within("table#listing_orders") { expect(page).not_to have_content("R200") }
     end
 
     context "filter on promotions", :js => true do
       before(:each) do
         @order1.promotions << promotion
         @order1.save
+        click_link "Orders"
       end
 
       it "only shows the orders with the selected promotion" do
         select2 promotion.name, :from => "Promotion"
         click_icon :search
-        within_row(1) { page.should have_content("R100") }
-        within("table#listing_orders") { page.should_not have_content("R200") }
+        within_row(1) { expect(page).to have_content("R100") }
+        within("table#listing_orders") { expect(page).not_to have_content("R200") }
       end
     end
-
 
   end
 end

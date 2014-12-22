@@ -6,7 +6,9 @@ module Spree
   class CheckoutController < Spree::StoreController
     ssl_required
 
-    before_filter :load_order_with_lock
+    before_action :load_order_with_lock
+    before_filter :ensure_valid_state_lock_version, only: [:update]
+    before_filter :set_state_if_present
 
     before_filter :ensure_order_not_completed
     before_filter :ensure_checkout_allowed
@@ -26,7 +28,7 @@ module Spree
     # Updates the order and advances to the next state (when possible.)
     def update
       if @order.update_from_params(params, permitted_checkout_attributes, request.headers.env)
-        persist_user_address
+        @order.temporary_address = !params[:save_user_address]
         unless @order.next
           flash[:error] = @order.errors.full_messages.join("\n")
           redirect_to checkout_state_path(@order.state) and return
@@ -35,7 +37,7 @@ module Spree
         if @order.completed?
           @current_order = nil
           flash.notice = Spree.t(:order_processed_successfully)
-          flash[:order_completed] = true
+          flash['order_completed'] = true
           redirect_to completion_route
         else
           redirect_to checkout_state_path(@order.state)
@@ -72,7 +74,21 @@ module Spree
       def load_order_with_lock
         @order = current_order(lock: true)
         redirect_to spree.cart_path and return unless @order
+      end
 
+      def ensure_valid_state_lock_version
+        if params[:order] && params[:order][:state_lock_version]
+          @order.with_lock do
+            unless @order.state_lock_version == params[:order].delete(:state_lock_version).to_i
+              flash[:error] = Spree.t(:order_already_updated)
+              redirect_to checkout_state_path(@order.state) and return
+            end
+            @order.increment!(:state_lock_version)
+          end
+        end
+      end
+
+      def set_state_if_present
         if params[:state]
           redirect_to checkout_state_path(@order.state) if @order.can_go_to_state?(params[:state]) && !skip_state_validation?
           @order.state = params[:state]
@@ -106,14 +122,11 @@ module Spree
         send(method_name) if respond_to?(method_name, true)
       end
 
-      # Skip setting ship address if order doesn't have a delivery checkout step
-      # to avoid triggering validations on shipping address
       def before_address
-        @order.bill_address ||= Address.default(try_spree_current_user, "bill")
-
-        if @order.checkout_steps.include? "delivery"
-          @order.ship_address ||= Address.default(try_spree_current_user, "ship")
-        end
+        # if the user has a default address, a callback takes care of setting
+        # that; but if he doesn't, we need to build an empty one here
+        @order.bill_address ||= Address.build_default
+        @order.ship_address ||= Address.build_default if @order.checkout_steps.include?('delivery')
       end
 
       def before_delivery
@@ -145,14 +158,6 @@ module Spree
 
       def check_authorization
         authorize!(:edit, current_order, cookies.signed[:guest_token])
-      end
-
-      def persist_user_address
-        if @order.checkout_steps.include? "address"
-          if @order.address? && try_spree_current_user.respond_to?(:persist_order_address)
-            try_spree_current_user.persist_order_address(@order) if params[:save_user_address]
-          end
-        end
       end
   end
 end

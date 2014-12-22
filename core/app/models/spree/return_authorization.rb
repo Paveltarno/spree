@@ -1,8 +1,8 @@
 module Spree
   class ReturnAuthorization < Spree::Base
-    belongs_to :order, class_name: 'Spree::Order'
+    belongs_to :order, class_name: 'Spree::Order', inverse_of: :return_authorizations
 
-    has_many :inventory_units, dependent: :nullify
+    has_many :inventory_units, dependent: :nullify, inverse_of: :return_authorization
     belongs_to :stock_location
     before_create :generate_number
     before_save :force_positive_amount
@@ -91,7 +91,7 @@ module Spree
           end
         end
 
-        Adjustment.create(adjustable: order, amount: compute_amount, label: Spree.t(:rma_credit), source: self)
+        Adjustment.create(adjustable: order, amount: compute_amount, label: Spree.t(:rma_credit), order: order, source: self)
         order.update!
 
         order.return if inventory_units.all?(&:returned?)

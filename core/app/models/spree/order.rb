@@ -3,8 +3,8 @@ require 'spree/order/checkout'
 
 module Spree
   class Order < Spree::Base
-    include Checkout
-    include CurrencyUpdater
+    include Spree::Order::Checkout
+    include Spree::Order::CurrencyUpdater
 
     checkout_flow do
       go_to_state :address
@@ -16,6 +16,7 @@ module Spree
     end
 
     attr_reader :coupon_code
+    attr_accessor :temporary_address
 
     if Spree.user_class
       belongs_to :user, class_name: Spree.user_class.to_s
@@ -36,9 +37,9 @@ module Spree
     alias_attribute :ship_total, :shipment_total
 
     has_many :state_changes, as: :stateful
-    has_many :line_items, -> { order('created_at ASC') }, dependent: :destroy, inverse_of: :order
+    has_many :line_items, -> { order("#{LineItem.table_name}.created_at ASC") }, dependent: :destroy, inverse_of: :order
     has_many :payments, dependent: :destroy
-    has_many :return_authorizations, dependent: :destroy
+    has_many :return_authorizations, dependent: :destroy, inverse_of: :order
     has_many :adjustments, -> { order("#{Adjustment.table_name}.created_at ASC") }, as: :adjustable, dependent: :destroy
     has_many :line_item_adjustments, through: :line_items, source: :adjustments
     has_many :shipment_adjustments, through: :shipments, source: :adjustments
@@ -73,6 +74,7 @@ module Spree
 
     validates :email, presence: true, if: :require_email
     validates :email, email: true, if: :require_email, allow_blank: true
+    validates :number, presence: true, uniqueness: { allow_blank: true }
     validate :has_available_shipment
 
     make_permalink field: :number
@@ -148,7 +150,7 @@ module Spree
     end
 
     def display_tax_total
-      Spree::Money.new(included_tax_total + additional_tax_total, { currency: currency })
+      Spree::Money.new(tax_total, { currency: currency })
     end
 
     def display_shipment_total
@@ -254,15 +256,18 @@ module Spree
       end
     end
 
-    # FIXME refactor this method and implement validation using validates_* utilities
-    def generate_order_number
-      record = true
-      while record
-        random = "R#{Array.new(9){rand(9)}.join}"
-        record = self.class.where(number: random).first
-      end
-      self.number = random if self.number.blank?
-      self.number
+    def generate_order_number(digits = 9)
+      self.number ||= loop do
+         # Make a random number.
+         random = "R#{Array.new(digits){rand(10)}.join}"
+         # Use the random  number if no other order exists with it.
+         if self.class.exists?(number: random)
+           # If over half of all possible options are taken add another digit.
+           digits += 1 if self.class.count > (10 ** digits / 2)
+         else
+           break random
+         end
+       end
     end
 
     def shipped_shipments
@@ -292,7 +297,11 @@ module Spree
     end
 
     def outstanding_balance
-      total - payment_total
+      if self.state == 'canceled' && self.payments.present? && self.payments.completed.size > 0
+        -1 * payment_total
+      else
+        total - payment_total
+      end
     end
 
     def outstanding_balance?
@@ -372,7 +381,12 @@ module Spree
     #   which gets rescued and converted to FALSE when
     #   :allow_checkout_on_gateway_error is set to false
     #
-    def process_payments!
+    def process_payments!\
+      # Don't run if there is nothing to pay.
+      return if payment_total >= total
+      # Prevent orders from transitioning to complete without a successfully processed payment.
+      raise Core::GatewayError.new(Spree.t(:no_payment_found)) if pending_payments.empty?
+
       pending_payments.each do |payment|
         break if payment_total >= total
 
@@ -397,6 +411,16 @@ module Spree
 
     def insufficient_stock_lines
      line_items.select(&:insufficient_stock?)
+    end
+
+    def ensure_line_items_are_in_stock
+      if insufficient_stock_lines.present?
+        errors.add(:base, Spree.t(:insufficient_stock_lines_present))
+        restart_checkout_flow
+        false
+      else
+        true
+      end
     end
 
     def merge!(order, user = nil)
@@ -614,14 +638,12 @@ module Spree
         end
       end
 
-      def after_cancel
-        shipments.each { |shipment| shipment.cancel! }
-        payments.completed.each { |payment| payment.cancel! }
-
-        send_cancel_email
-        self.update_column(:payment_state, 'credit_owed') unless shipped?
-        self.update!
-      end
+    def after_cancel
+      shipments.each { |shipment| shipment.cancel! }
+      payments.completed.each { |payment| payment.cancel! }
+      send_cancel_email
+      self.update!
+    end
 
       def send_cancel_email
         OrderMailer.cancel_email(self.id).deliver

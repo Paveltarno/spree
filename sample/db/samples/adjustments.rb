@@ -13,6 +13,7 @@ first_order.adjustments.create!(
 last_order.adjustments.create!(
   :amount => 0,
   :source => Spree::TaxRate.find_by_name!("מס הכנסה"),
+  :order  => last_order,
   :label => "Tax",
   :state => "open",
   :mandatory => true)

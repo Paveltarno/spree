@@ -40,8 +40,7 @@ module Spree
     has_one :master,
       -> { where is_master: true },
       inverse_of: :product,
-      class_name: 'Spree::Variant',
-      dependent: :destroy
+      class_name: 'Spree::Variant'
 
     has_many :variants,
       -> { where(is_master: false).order("#{::Spree::Variant.quoted_table_name}.position ASC") },
@@ -58,41 +57,45 @@ module Spree
 
     has_many :stock_items, through: :variants_including_master
 
+    has_many :line_items, through: :variants_including_master
+    has_many :orders, through: :line_items
+
     delegate_belongs_to :master, :sku, :price, :currency, :display_amount, :display_price, :weight, :height, :width, :depth, :is_master, :has_default_price?, :cost_currency, :price_in, :amount_in
 
     delegate_belongs_to :master, :cost_price
-
-    after_create :set_master_variant_defaults
-    after_create :add_properties_and_option_types_from_prototype
-    after_create :build_variants_from_option_values_hash, if: :option_values_hash
-
-    after_save :save_master
-    after_save :run_touch_callbacks, if: :anything_changed?
-    after_save :reset_nested_changes
-    after_touch :touch_taxons
 
     delegate :images, to: :master, prefix: true
     alias_method :images, :master_images
 
     has_many :variant_images, -> { order(:position) }, source: :images, through: :variants_including_master
 
+    after_create :set_master_variant_defaults
+    after_create :add_properties_and_option_types_from_prototype
+    after_create :build_variants_from_option_values_hash, if: :option_values_hash
+
+    after_destroy :punch_slug
+
+    after_initialize :ensure_master
+
+    after_save :save_master
+    after_save :run_touch_callbacks, if: :anything_changed?
+    after_save :reset_nested_changes
+    after_touch :touch_taxons
+
+    before_validation :normalize_slug, on: :update
+    before_validation :validate_master
+
+    validates :meta_keywords, length: { maximum: 255 }
     validates :name, presence: true
     validates :price, presence: true, if: proc { Spree::Config[:require_master_price] }
     validates :shipping_category_id, presence: true
-    validates :slug, length: { minimum: 3 }
-    validates :slug, uniqueness: true
-
-    before_validation :normalize_slug, on: :update
-
-    after_destroy :punch_slug
+    validates :slug, length: { minimum: 3 }, uniqueness: { allow_blank: true }
 
     attr_accessor :option_values_hash
 
     accepts_nested_attributes_for :product_properties, allow_destroy: true, reject_if: lambda { |pp| pp[:property_name].blank? }
 
     alias :options :product_option_types
-
-    after_initialize :ensure_master
 
     # the master variant is not a member of the variants array
     def has_variants?
@@ -279,13 +282,25 @@ module Spree
           @nested_changes = true
         end
 
-      # If the master cannot be saved, the Product object will get its errors
+      # Doorstep only - If the master cannot be saved, the Product object will get its errors
       # and will be destroyed
       rescue ActiveRecord::RecordInvalid
         master.errors.each do |att, error|
           self.errors.add(att, error)
         end
         raise
+      end
+    end
+
+    # If the master cannot be saved, the Product object will get its errors
+    # and will be destroyed
+    def validate_master
+      # We call master.default_price here to ensure price is initialized.
+      # Required to avoid Variant#check_price validation failing on create.
+      unless master.default_price && master.valid?
+        master.errors.each do |att, error|
+          self.errors.add(att, error)
+        end
       end
     end
 

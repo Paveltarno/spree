@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Spree::OrderContents do
+describe Spree::OrderContents, :type => :model do
   let(:order) { Spree::Order.create }
   let(:variant) { create(:variant) }
 
@@ -10,32 +10,48 @@ describe Spree::OrderContents do
     context 'given quantity is not explicitly provided' do
       it 'should add one line item' do
         line_item = subject.add(variant)
-        line_item.quantity.should == 1
-        order.line_items.size.should == 1
+        expect(line_item.quantity).to eq(1)
+        expect(order.line_items.size).to eq(1)
+      end
+    end
+
+    context 'given a shipment' do
+      it "ensure shipment calls update_amounts instead of order calling ensure_updated_shipments" do
+        shipment = create(:shipment)
+        expect(subject.order).to_not receive(:ensure_updated_shipments)
+        expect(shipment).to receive(:update_amounts)
+        subject.add(variant, 1, nil, shipment)
+      end
+    end
+
+    context 'not given a shipment' do
+      it "ensures updated shipments" do
+        expect(subject.order).to receive(:ensure_updated_shipments)
+        subject.add(variant)
       end
     end
 
     it 'should add line item if one does not exist' do
       line_item = subject.add(variant, 1)
-      line_item.quantity.should == 1
-      order.line_items.size.should == 1
+      expect(line_item.quantity).to eq(1)
+      expect(order.line_items.size).to eq(1)
     end
 
     it 'should update line item if one exists' do
       subject.add(variant, 1)
       line_item = subject.add(variant, 1)
-      line_item.quantity.should == 2
-      order.line_items.size.should == 1
+      expect(line_item.quantity).to eq(2)
+      expect(order.line_items.size).to eq(1)
     end
 
     it "should update order totals" do
-      order.item_total.to_f.should == 0.00
-      order.total.to_f.should == 0.00
+      expect(order.item_total.to_f).to eq(0.00)
+      expect(order.total.to_f).to eq(0.00)
 
       subject.add(variant, 1)
 
-      order.item_total.to_f.should == 19.99
-      order.total.to_f.should == 19.99
+      expect(order.item_total.to_f).to eq(19.99)
+      expect(order.total.to_f).to eq(19.99)
     end
 
     context "running promotions" do
@@ -85,7 +101,25 @@ describe Spree::OrderContents do
         line_item = subject.add(variant, 3)
         subject.remove(variant)
 
-        line_item.reload.quantity.should == 2
+        expect(line_item.reload.quantity).to eq(2)
+      end
+    end
+
+    context 'given a shipment' do
+      it "ensure shipment calls update_amounts instead of order calling ensure_updated_shipments" do
+        line_item = subject.add(variant, 1)
+        shipment = create(:shipment)
+        expect(subject.order).to_not receive(:ensure_updated_shipments)
+        expect(shipment).to receive(:update_amounts)
+        subject.remove(variant, 1, shipment)
+      end
+    end
+
+    context 'not given a shipment' do
+      it "ensures updated shipments" do
+        line_item = subject.add(variant, 1)
+        expect(subject.order).to receive(:ensure_updated_shipments)
+        subject.remove(variant)
       end
     end
 
@@ -93,28 +127,28 @@ describe Spree::OrderContents do
       line_item = subject.add(variant, 3)
       subject.remove(variant, 1)
 
-      line_item.reload.quantity.should == 2
+      expect(line_item.reload.quantity).to eq(2)
     end
 
     it 'should remove line_item if quantity matches line_item quantity' do
       subject.add(variant, 1)
       subject.remove(variant, 1)
 
-      order.reload.find_line_item_by_variant(variant).should be_nil
+      expect(order.reload.find_line_item_by_variant(variant)).to be_nil
     end
 
     it "should update order totals" do
-      order.item_total.to_f.should == 0.00
-      order.total.to_f.should == 0.00
+      expect(order.item_total.to_f).to eq(0.00)
+      expect(order.total.to_f).to eq(0.00)
 
       subject.add(variant,2)
 
-      order.item_total.to_f.should == 39.98
-      order.total.to_f.should == 39.98
+      expect(order.item_total.to_f).to eq(39.98)
+      expect(order.total.to_f).to eq(39.98)
 
       subject.remove(variant,1)
-      order.item_total.to_f.should == 19.99
-      order.total.to_f.should == 19.99
+      expect(order.item_total.to_f).to eq(19.99)
+      expect(order.total.to_f).to eq(19.99)
     end
   end
 

@@ -2,12 +2,13 @@ module Spree
   class StockItem < Spree::Base
     acts_as_paranoid
 
-    belongs_to :stock_location, class_name: 'Spree::StockLocation'
+    belongs_to :stock_location, class_name: 'Spree::StockLocation', inverse_of: :stock_items
     belongs_to :variant, class_name: 'Spree::Variant', inverse_of: :stock_items
     has_many :stock_movements, inverse_of: :stock_item
 
     validates_presence_of :stock_location, :variant
     validates_uniqueness_of :variant_id, scope: [:stock_location_id, :deleted_at]
+    validates :count_on_hand, numericality: { greater_than_or_equal_to: 0 }, if: :verify_count_on_hand?
 
     delegate :weight, :should_track_inventory?, to: :variant
 
@@ -56,6 +57,10 @@ module Spree
     end
 
     private
+      def verify_count_on_hand?
+        count_on_hand_changed? && !backorderable? && (count_on_hand < count_on_hand_was) && (count_on_hand < 0)
+      end
+
       def count_on_hand=(value)
         write_attribute(:count_on_hand, value)
       end

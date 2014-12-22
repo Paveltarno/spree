@@ -11,6 +11,12 @@ en:
         phone: Phone
         state: State
         zipcode: Zip Code
+      spree/calculator/tiered_flat_rate:
+        preferred_base_amount: Base Amount
+        preferred_tiers: Tiers
+      spree/calculator/tiered_percent:
+        preferred_base_percent: Base Percent
+        preferred_tiers: Tiers
       spree/country:
         iso: ISO
         iso3: ISO3
@@ -47,6 +53,7 @@ en:
         special_instructions: Special Instructions
         state: State
         total: Total
+        considered_risky: Risky
       spree/order/bill_address:
         address1: Billing address street
         city: Billing address city
@@ -230,6 +237,19 @@ en:
         other: Zones
     errors:
       models:
+        spree/calculator/tiered_flat_rate:
+          attributes:
+            base:
+              keys_should_be_positive_number: "Tier keys should all be numbers larger than 0"
+            preferred_tiers:
+              should_be_hash: "should be a hash"
+        spree/calculator/tiered_percent:
+          attributes:
+            base:
+              keys_should_be_positive_number: "Tier keys should all be numbers larger than 0"
+              values_should_be_percent: "Tier values should all be percentages between 0% and 100%"
+            preferred_tiers:
+              should_be_hash: "should be a hash"
         spree/classification:
           attributes:
             taxon_id:
@@ -323,7 +343,7 @@ en:
     add_stock_management: Add Stock Management
     add_to_cart: Add To Cart
     add_variant: Add Variant
-    additional_item: Additional Item Cost
+    additional_item: Additional Item
     address1: Address
     address2: Address (contd.)
     adjustable: Adjustable
@@ -418,8 +438,11 @@ en:
     back_to_users_list: Back To Users List
     back_to_zones_list: Back To Zones List
     backorderable: Backorderable
+    backorderable_default: Backorderable default
     backorders_allowed: backorders allowed
     balance_due: Balance Due
+    base_amount: Base Amount
+    base_percent: Base Percent
     bill_address: Bill Address
     billing: Billing
     billing_address: Billing Address
@@ -451,7 +474,7 @@ en:
     choose_dashboard_locale: Choose Dashboard Locale
     choose_location: Choose location
     city: City
-    click_and_drag_on_the_products_to_sort_them: 'Click &amp; drag on the products to sort them.'
+    click_and_drag_on_the_products_to_sort_them: Click and drag on the products to sort them
     clone: Clone
     close: Close
     close_all_adjustments: Close All Adjustments
@@ -491,6 +514,7 @@ en:
     coupon_code_unknown_error: This coupon code could not be applied to the cart at this time.
     create: Create
     create_a_new_account: Create a new account
+    create_new_order: Create new order
     created_at: Created At
     credit: Credit
     credit_card: Credit Card
@@ -599,7 +623,7 @@ en:
     finalize: Finalize
     find_a_taxon: Find a Taxon
     finalized: Finalized
-    first_item: First Item Cost
+    first_item: First Item
     first_name: First Name
     first_name_begins_with: First Name Begins With
     flat_percent: Flat Percent
@@ -643,6 +667,7 @@ en:
     included_price_validation: cannot be selected unless you have set a Default Tax Zone
     instructions_to_reset_password: Please enter your email on the form below
     insufficient_stock: Insufficient stock available, only %{on_hand} remaining
+    insufficient_stock_lines_present: Some line items in this order have insufficient quantity.
     intercept_email_address: Intercept Email Address
     intercept_email_instructions: Override email recipient and replace with this address.
     internal_name: Internal Name
@@ -694,6 +719,7 @@ en:
     logout: Logout
     look_for_similar_items: Look for similar items
     make_refund: Make refund
+    manage_variants: Manage Variants
     master_price: Master Price
     match_choices:
       all: All
@@ -787,6 +813,7 @@ en:
     or_over_price: ! '%{price} or over'
     order: Order
     order_adjustments: Order adjustments
+    order_already_updated: The order has already been updated.
     order_approved: Order approved
     order_canceled: Order canceled
     order_details: Order Details
@@ -890,7 +917,7 @@ en:
       label: Order must contain %{select} of these products
       match_all: all
       match_any: at least one
-      match_none: none 
+      match_none: none
       product_source:
         group: From product group
         manual: Manually choose
@@ -937,6 +964,7 @@ en:
         name: User Logged In
     promotions: Promotions
     promotion_uses: Promotion uses
+    propagate_all_variants: Propagate all variants
     properties: Properties
     property: Property
     prototype: Prototype
@@ -1007,7 +1035,6 @@ en:
     shipment: Shipment
     shipment_adjustments: "Shipment adjustments"
     shipment_details: "From %{stock_location} via %{shipping_method}"
-    shipment_inc_vat: Shipment including VAT
     shipment_mailer:
       shipped_email:
         dear_customer: Dear Customer,
@@ -1045,8 +1072,10 @@ en:
     show_active: Show Active
     show_deleted: Show Deleted
     show_only_complete_orders: Only show complete orders
+    show_only_considered_risky: Only show risky orders
     show_rate_in_label: Show rate in label
     sku: SKU
+    skus: SKU's
     slug: Slug
     source: Source
     special_instructions: Special Instructions
@@ -1088,7 +1117,6 @@ en:
     tax_category: Tax Category
     tax_rate_amount_explanation: Tax rates are a decimal amount to aid in calculations, (i.e. if the tax rate is 5% then enter 0.05)
     tax_rates: Tax Rates
-    tax_settings: Tax Settings
     taxon: Taxon
     taxon_edit: Edit Taxon
     taxon_placeholder: Add a Taxon
@@ -1109,6 +1137,9 @@ en:
     there_are_no_items_for_this_order: There are no items for this order. Please add an item to the order to continue.
     there_were_problems_with_the_following_fields: There were problems with the following fields
     thumbnail: Thumbnail
+    tiers: Tiers
+    tiered_flat_rate: Tiered Flat Rate
+    tiered_percent: Tiered Percent
     time: Time
     to_add_variants_you_must_first_define: To add variants, you must first define
     total: Total
